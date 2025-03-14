@@ -1,0 +1,31 @@
+{
+  "name": "synx",
+  "version": "0.0.1",
+  "description": "A low level signal DSL in typescript for DOM programming.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsup src/index.ts --format esm,cjs --dts",
+    "dev": "tsup --watch",
+    "lint": "eslint src --fix",
+    "format": "prettier --write src"
+  },
+  "keywords": [],
+  "author": "Debjit Biswas",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/jsdom": "^21.1.7",
+    "eslint": "^9.22.0",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.5.3",
+    "tsup": "^8.4.0",
+    "typescript": "^5.8.2",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.0.8"
+  },
+  "dependencies": {
+    "@preact/signals-core": "^1.8.0",
+    "fp-ts": "^2.16.9"
+  }
+}
