@@ -23,7 +23,7 @@ describe("Click Counter App", () => {
     globalThis.document = document;
     globalThis.window = dom.window;
 
-    const interpreter = new RInterpreter();
+    const interpreter = RInterpreter();
 
     // Initialize the app within the JSDOM environment
     clickCounterApp()(interpreter);

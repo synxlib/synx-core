@@ -5,74 +5,36 @@ import { DomError } from "@/lang/extensions/dom";
 import { SynxMath } from "@/lang/extensions/math";
 import { Show } from "@/lang/show";
 import { Expr, Interpreter } from "@lang/extensions/common";
+import { RMath } from "./math";
+import { RContext } from "./context";
+import { RString } from "./string";
+import { RLambda } from "./lambda";
+import { RError } from "./error";
+import { REvent } from "./event";
+import { RDom } from "./dom";
+import { RList } from "./list";
+import { unR, RValue } from "./common";
+import { RBind } from "./bind";
 
-interface Tracking {
-  id?: Symbol;
-  contextId?: number;
-  variables?: RValue<any>[];
-}
+export const RInterpreter = (): Interpreter<"R"> & Show<"R", number> => {
+  const rContext = new RContext();
 
-// Define our 'R' interpreter type
-export interface RValue<A> /*extends HKT<"R", A>*/ {
-  readonly _URI: "R";
-  readonly _A: A;
-  readonly value: { current: A };
-  readonly _tracking?: Tracking;
-}
-
-export interface RStateValue<A> extends RValue<any> {
-  readonly _URI: "R";
-  readonly _A: A;
-  readonly value: { current: A };
-  readonly _tracking?: Tracking;
-}
-
-export function isRStateValue<A>(value: RValue<any>): value is RStateValue<A> {
-  return (
-    typeof value.value === "object" &&
-    value.value !== null &&
-    "current" in value.value
-  );
-}
-
-// Declare R URI for TypeScript's type system
-declare module "../../../generic/hkt" {
-  interface URItoKind<A> {
-    R: RValue<A>;
-  }
-}
-
-// Constructor function for R values
-export const R = <A>(value: A, tracking?: Tracking): RValue<A> => ({
-  _URI: "R",
-  _A: {} as A,
-  value: { current: value },
-  _tracking: tracking,
-});
-
-export const RState = <A>(value: A, tracking?: Tracking): RStateValue<A> => ({
-  _URI: "R",
-  _A: {} as A,
-  value: { current: value },
-  _tracking: tracking,
-});
-
-// Accessor function to extract the value
-export const unR = <A>(r: RValue<A> | RStateValue<A>): A => {
-  // If this is a state value, extract the current state
-  // if (isRStateValue<A>(r)) {
-  //   return r.value.current;
-  // }
-  return r.value.current;
+  return {
+    ...RList(rContext),
+    ...RMath(rContext),
+    ...RString(rContext),
+    ...RLambda(rContext),
+    ...REvent(rContext),
+    ...RError(rContext),
+    ...RDom(rContext),
+    ...RBind(rContext)
+  };
 };
 
-// Context for tracking fold operations and variables
-interface Context {
-  id: number;
-  variables: Set<any>; // State variables in this context
-  operations: Array<() => void>; // Operations to run when state changes
-}
+// Evaluate function - simply extracts the value
+export const eval_ = <A>(expr: RValue<A>): A => unR(expr);
 
+/*
 // Implementation of the meta-circular interpreter R
 export class RInterpreter implements Interpreter<"R">, Show<"R", number> {
   private contexts: Context[] = [];
@@ -124,14 +86,6 @@ export class RInterpreter implements Interpreter<"R">, Show<"R", number> {
         context.operations.push(operation);
       }
     }
-  }
-
-  // Helper to extract the current value, handling reactive objects
-  private getCurrentValue<A>(value: A): A {
-    if (value && typeof value === "object" && "current" in value) {
-      return (value as any).current;
-    }
-    return value;
   }
 
   // Helper to collect tracking info from multiple values
@@ -416,8 +370,7 @@ export class RInterpreter implements Interpreter<"R">, Show<"R", number> {
     // Create a new context for this fold
     const context = this.createContext();
 
-    // Create a state value using RState constructor
-    const stateValue = RState<S>(initialStateVal, {
+    const stateValue = R<S>(initialStateVal, {
       id: Symbol("state"),
       contextId: context.id,
     });
@@ -517,9 +470,8 @@ export class RInterpreter implements Interpreter<"R">, Show<"R", number> {
     }
   }
 }
+  */
 
-// Evaluate function - simply extracts the value
-export const eval_ = <A>(expr: RValue<A>): A => unR(expr);
 
 // Usage example:
 // const expr: Expr<"R", number> = (interpreter) =>

@@ -23,7 +23,7 @@ export interface SynxError<F extends URIS> {
 export const throwError = <F extends URIS, E, A>(e: E): Expr<F, A> => 
   (interpreter: SynxError<F>) => interpreter.throwError(e);
 
-export const fromError = <F extends URIS, E, A>(value: Either<Expr<F, E>, Expr<F, A>>): Expr<F, Either<E, A>> =>
+export const fromEither = <F extends URIS, E, A>(value: Either<Expr<F, E>, Expr<F, A>>): Expr<F, Either<E, A>> =>
   (interpreter) => interpreter.fromEither(
     value.isRight() ? right(value.value(interpreter)) : left(value.value(interpreter))
   );

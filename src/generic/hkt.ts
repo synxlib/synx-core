@@ -41,7 +41,9 @@ export interface HKT<URI, A> {
    * `* -> *` constructors
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  export interface URItoKind<A> {}
+  export interface URItoKind<A> {
+    void: void
+  }
   
   /**
    * `* -> * -> *` constructors
