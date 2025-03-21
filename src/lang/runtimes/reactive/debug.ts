@@ -4,7 +4,7 @@ import { run } from "./run";
 import { Either } from "@/generic/either";
 
 
-export function runDebugInstr<A>(instr: DebugInstruction<Freer<A>>): Either<string, A> {
+export function runDebugInstr<A>(instr: DebugInstruction<Freer<A>>): A {
     switch(instr.tag) {
         case "Log": {
             console.log(instr.message);

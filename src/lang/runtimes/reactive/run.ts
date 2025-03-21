@@ -10,12 +10,12 @@ import { runEventInstr } from "./event";
 import { isErrorInstruction } from "@/lang/extensions/error";
 import { runErrorInstr } from "./error";
 
-export function run<A>(program: Freer<A>): Either<string, A> {
-    if (program.kind === "Pure") return right(program.value);
+export function run<A>(program: Freer<A>): A {
+    if (program.kind === "Pure") return program.value;
     return runInstr(program.instr);
 }
 
-function runInstr<A>(instr: Instruction<Freer<A>>): Either<string, A> {
+function runInstr<A>(instr: Instruction<Freer<A>>): A {
     if (isDomInstruction(instr)) return runDomInstr(instr);
     if (isEventInstruction(instr)) return runEventInstr(instr);
     if (isDebugInstruction(instr)) return runDebugInstr(instr);

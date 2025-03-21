@@ -3,15 +3,18 @@ import { ErrorInstruction, throwError } from "@/lang/extensions/error";
 import { run } from "./run";
 import { pure } from "@/lang/extensions/freer";
 
-export function runErrorInstr<A>(instr: ErrorInstruction<A>): Either<string, A> {
+export function runErrorInstr<A>(instr: ErrorInstruction<A>): A {
     switch (instr.tag) {
         case "Throw":
-          return left(instr.error);
+            throw new Error(instr.error);
     
         case "Catch": {
-          const attempt = run(instr.tryBlock);
-          if (attempt.isRight()) return attempt;
-          return run(instr.handler(attempt.value));
+            try {
+                const result = run(instr.tryBlock);
+                return result;
+              } catch (err) {
+                return run(instr.handler(String(err)));
+              }
         }
     
         case "Require": {

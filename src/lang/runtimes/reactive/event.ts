@@ -6,7 +6,7 @@ import { notify } from "./dependency";
 
 export function runEventInstr<A>(
     instr: EventInstruction<Freer<A>>,
-): Either<string, A> {
+): A {
     switch (instr.tag) {
         case "On": {
             const subscribers: ((e: any) => void)[] = [];
@@ -32,14 +32,9 @@ export function runEventInstr<A>(
             const signal = { get: () => state };
             event.subscribe((e) => {
               const eff = reducer(state, e);
-              const result = run(eff);
-              if (result.isRight()) {
-                state = result.value;
-                notify(signal);
-              } else {
-                console.warn("Error in FoldM reducer:", result.value);
-                // Optional: decide what to do (ignore, keep old state, set default, etc.)
-              }
+              const newState = run(eff);
+              state = newState;
+              notify(signal);
             });
             return run(next(signal));
         }

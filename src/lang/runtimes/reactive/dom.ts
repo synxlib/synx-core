@@ -4,7 +4,7 @@ import { Freer } from "@/lang/extensions/freer";
 import { run } from "./run";
 import { trackDependency } from "./dependency";
 
-export function runDomInstr<A>(instr: DomInstruction<Freer<A>>): Either<string, A> {
+export function runDomInstr<A>(instr: DomInstruction<Freer<A>>): A {
     switch (instr.tag) {
         case "GetElementById": {
             const el = document.getElementById(instr.id);
