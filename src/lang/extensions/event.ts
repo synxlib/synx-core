@@ -1,137 +1,93 @@
-import { Effect } from "@/generic/effect";
-import { URIS, Kind } from "../../generic/hkt";
-import { ap, ap2, ap3, pure, ret } from "./bind";
-import { Expr, Interpreter } from "./common";
-import { DomEffect } from "./dom-effect";
-import { lam2, lam3 } from "./lambda";
+import { Freer, impure, pure } from "./freer";
+import { makeTagGuard } from "./make-tag-guard";
 
-export interface SynxEvent<F extends URIS> {
-    fold<E, S>(
-        event: Kind<F, { listeners: ((event: E) => void)[] }>,
-        initialState: Kind<F, S>,
-        reducer: Kind<F, (state: S, event: E) => S>,
-    ): Kind<F, S>;
+type EventSource = {
+    subscribe: (cb: (e: unknown) => void) => void;
+};
 
-    foldM<E, S>(
-        event: Kind<F, Effect<{ listeners: ((event: E) => void)[] }>>,
-        initialState: Kind<F, Effect<S>>,
-        reducer: Kind<F, (state: Effect<S>, event: E) => Effect<S>>,
-    ): Kind<F, Effect<S>>;
+const InstructionTags = {
+    Fold: "Fold",
+    FoldM: "FoldM",
+    On: "On",
+} as const;
 
-    effect<E>(
-        event: Kind<F, { listeners: ((event: E) => void)[] }>,
-        handler: Kind<F, (event: E) => void>,
-    ): Kind<F, void>;
+type FoldInstr<S, E, A> = {
+    tag: typeof InstructionTags.Fold;
+    event: EventSource;
+    initial: S;
+    reducer: (state: S, event: E) => S;
+    next: (state: S) => A;
+};
 
-    zip<S, T>(
-        a: Kind<F, { listeners: ((event: S) => void)[] }>,
-        b: Kind<F, { listeners: ((event: T) => void)[] }>,
-    ): Kind<F, { listeners: ((event: S | T) => void)[] }>;
+type FoldMInstr<S, E, A> = {
+    tag: typeof InstructionTags.FoldM;
+    event: EventSource;
+    initial: S;
+    reducer: (state: S, event: E) => Freer<S>;
+    next: (state: S) => A;
+};
+
+export type EventInstruction<A> =
+    | {
+          tag: typeof InstructionTags.On;
+          event: string;
+          target: HTMLElement | null;
+          next: (e: EventSource) => A;
+      }
+    | FoldInstr<any, any, A>
+    | FoldMInstr<any, any, A>;
+
+export const on = (
+    event: string,
+    target: HTMLElement | null,
+): Freer<EventSource> => impure({ tag: InstructionTags.On, event, target, next: pure });
+
+export const fold = <S, E>(
+    event: EventSource,
+    initial: S,
+    reducer: (state: S, event: E) => S,
+): Freer<S> =>
+    impure({
+        tag: InstructionTags.Fold,
+        event,
+        initial,
+        reducer,
+        next: pure,
+    } as FoldInstr<S, E, Freer<S>>);
+
+export const foldM = <S, E>(
+    event: EventSource,
+    initial: S,
+    reducer: (state: S, event: E) => Freer<S>,
+): Freer<S> =>
+    impure({
+        tag: InstructionTags.FoldM,
+        event,
+        initial,
+        reducer,
+        next: pure,
+    } as FoldMInstr<S, E, Freer<S>>);
+
+export function eventMapInstr<A, B>(
+    instr: EventInstruction<A>,
+    f: (a: A) => B,
+): EventInstruction<B> {
+    switch (instr.tag) {
+        case InstructionTags.On:
+            return { ...instr, next: (e: EventSource) => f(instr.next(e)) };
+        case InstructionTags.Fold:
+            return { ...instr, next: (s) => f(instr.next(s)) } as FoldInstr<
+                any,
+                any,
+                B
+            >;
+        case InstructionTags.FoldM:
+            return { ...instr, next: (s) => f(instr.next(s)) } as FoldMInstr<
+                any,
+                any,
+                B
+            >;
+    }
 }
 
-export const foldS =
-    <F extends URIS, E, S>(
-        event: Expr<F, { listeners: ((event: E) => void)[] }>,
-        initialState: Expr<F, S>,
-        reducer: Expr<F, (state: S, event: E) => S>,
-    ): Expr<F, S> =>
-    (interpreter: Interpreter<F>) =>
-        interpreter.fold(
-            event(interpreter),
-            initialState(interpreter),
-            reducer(interpreter),
-        );
-
-export const fold =
-    <F extends URIS, E, S>(
-        event: Expr<F, Effect<{ listeners: ((event: E) => void)[] }>>,
-        initialState: Expr<F, S>,
-        reducer: Expr<F, (state: S, event: E) => S>,
-    ): Expr<F, Effect<S>> =>
-    (interpreter: Interpreter<F>) => {
-        const fn: Expr<
-            F,
-            (
-                event: { listeners: ((event: E) => void)[] },
-                initialState: S,
-                reducer: (state: S, event: E) => S,
-            ) => S
-        > = lam3(foldS);
-
-        return ap3(
-            ret(fn),
-            event,
-            ret(initialState),
-            ret(reducer),
-        )(interpreter);
-    };
-
-export const foldM =
-    <F extends URIS, E, S>(
-        event: Expr<F, Effect<{ listeners: ((event: E) => void)[] }>>, // Event stream
-        initialState: Expr<F, Effect<S>>, // Initial state (inside the monad)
-        reducer: Expr<F, (state: Effect<S>, event: E) => Effect<S>>, // Effectful reducer
-    ): Expr<F, Effect<S>> =>
-    (interpreter) => {
-
-        return interpreter.foldM(
-            event(interpreter),
-            initialState(interpreter),
-            reducer(interpreter),
-        );
-        // const flattenEffect =
-        //     <F extends URIS, S>(
-        //         expr: Expr<F, Effect<Effect<S>>>,
-        //     ): Expr<F, Effect<S>> =>
-        //     (interpreter) => {
-        //         const nestedEffect: Kind<F, Effect<Effect<S>>> = expr(
-        //             interpreter,
-        //         );
-
-        //         // Wrap the flattening function inside Kind<F, _>
-        //         const flattenFn: Kind<F, (e: Effect<Effect<S>>) => Effect<S>> =
-        //             interpreter.pure((e) => {
-        //                 console.log("Flattening effect", e);
-        //                 return e.chain((x) => x);
-        //             });
-
-        //         return interpreter.app(flattenFn, nestedEffect);
-        //     };
-
-        // const result = flattenEffect(fold(event, initialState, reducer))(interpreter);
-        // console.log("FoldM result:", result);
-        // return result;
-
-        // const fn: Expr<
-        //     F,
-        //     (
-        //         event: { listeners: ((event: E) => void)[] },
-        //         initialState: S,
-        //         reducer: (state: S, event: E) => S,
-        //     ) => S
-        // > = lam3(foldS);
-
-        // return ap3(
-        //     fn,
-        //     event,
-        //     initialState,
-        //     reducer,
-        // )(interpreter);
-    };
-
-export const effect =
-    <F extends URIS, E>(
-        event: Expr<F, { listeners: ((event: E) => void)[] }>,
-        handler: Expr<F, (event: E) => void>,
-    ) =>
-    (interpreter: Interpreter<F>) =>
-        interpreter.effect(event(interpreter), handler(interpreter));
-
-export const zip =
-    <F extends URIS, S, T>(
-        a: Expr<F, { listeners: ((event: S) => void)[] }>,
-        b: Expr<F, { listeners: ((event: T) => void)[] }>,
-    ) =>
-    (interpreter: Interpreter<F>) =>
-        interpreter.zip(a(interpreter), b(interpreter));
-
+export const isEventInstruction = makeTagGuard(Object.values(InstructionTags));

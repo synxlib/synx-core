@@ -45,10 +45,10 @@ export const RLambda = (rContext: RContext): SynxLambda<"R"> => ({
     return rContext.createTrackedValue([f, a, b, c], () => unR(f)(unR(a), unR(b), unR(c)));
   },
   lam3: function <A, B, C, D>(f: (a: RValue<A>, b: RValue<B>, c: RValue<C>) => RValue<D>): RValue<(a: A, b: B, c: C) => D> {
-    const fn = (a: A, b: B, c: C): D => {
-      const wrappedA = R(a);
-      const wrappedB = R(b);
-      const wrappedC = R(c);
+    const fn = (a_: A, b_: B, c_: C): D => {
+      const wrappedA = R(a_);
+      const wrappedB = R(b_);
+      const wrappedC = R(c_);
       const result = f(wrappedA, wrappedB, wrappedC);
       return unR(result);
     };

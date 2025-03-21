@@ -1,41 +1,83 @@
-import { Either, right, left } from "@/generic/either";
-import { URIS, Kind } from "../../generic/hkt";
-import { Expr } from "./common"
+import { Either, left } from "@/generic/either";
+import { Freer, impure, mapFreer, pure } from "./freer";
+import { makeTagGuard } from "./make-tag-guard";
+import { log } from "./debug";
 
-export interface SynxError<F extends URIS> {
-  throwError: <E, A>(error: E) => Kind<F, A>;
-  fromEither: <E, A>(value: Either<Kind<F, E>, Kind<F, A>>) => Kind<F, Either<E, A>>;
-  mapEither: <E, A, B>(
-    value: Kind<F, Either<E, A>>,
-    f: Kind<F, (a: A) => B>
-  ) => Kind<F, Either<E, B>>;
-  chainEither: <E, A, B>(
-    action: Kind<F, Either<E, A>>,
-    f: Kind<F, (a: A) => Either<E, B>>
-  ) => Kind<F, Either<E, B>>;
-//   catchError: <E, A>(
-//     action: Kind<F, A>,
-//     handler: (error: E) => Kind<F, A>
-//   ) => Kind<F, A>;
+const InstructionTags = {
+    Throw: "Throw",
+    Catch: "Catch",
+    Require: "Require"
+} as const;
+
+export type ErrorInstruction<A> =
+    | { tag: "Throw"; error: string }
+    | {
+          tag: "Catch";
+          tryBlock: Freer<any>;
+          handler: (err: string) => Freer<A>;
+      }
+    | {
+          tag: "Require";
+          error: string;
+          input: Either<string, any>;
+          next: (value: any) => A;
+      };
+
+export const throwError = (msg: string): Freer<never> =>
+    impure({ tag: "Throw", error: msg });
+
+export const catchError = <A>(
+    tryBlock: Freer<A>,
+    handler: (msg: string) => Freer<A>,
+): Freer<A> =>
+    impure({
+        tag: InstructionTags.Catch,
+        tryBlock,
+        handler: (err) => pure(handler(err)),
+    });
+
+export const require = <A>(e: Either<string, A>): Freer<A> =>
+    e.isRight()
+        ? pure(e.value)
+        // TODO Use contructors from debug
+        : impure({ tag: "Log", message: e.value, next: () => { throw new Error(e.value); } })
+
+export const mapLeft = <A>(
+    input: Either<string, A>,
+    f: (msg: string) => string,
+): Either<string, A> => (input.isLeft() ? left(f(input.value)) : input);
+
+export const mapError = <A>(
+    prog: Freer<A>,
+    f: (err: string) => string,
+): Freer<A> => catchError(prog, (e) => throwError(f(e)));
+
+export const orElse = <A>(prog: Freer<A>, fallback: A): Freer<A> =>
+    catchError(prog, () => pure(fallback));
+
+export const recoverWith = <A>(prog: Freer<A>, alt: Freer<A>): Freer<A> =>
+    catchError(prog, () => alt);
+
+export function errorMapInstr<A, B>(
+    instr: ErrorInstruction<A>,
+    f: (a: A) => B,
+): ErrorInstruction<B> {
+    switch (instr.tag) {
+        case InstructionTags.Throw:
+            return { ...instr }; // nothing to map
+
+        case InstructionTags.Catch:
+            return {
+                ...instr,
+                handler: (err) => mapFreer(instr.handler(err), f),
+            };
+        case InstructionTags.Require:
+            return {
+                ...instr,
+                next: (s) => f(instr.next(s))
+            }
+    }
 }
 
+export const isErrorInstruction = makeTagGuard(Object.values(InstructionTags));
 
-export const throwError = <F extends URIS, E, A>(e: E): Expr<F, A> => 
-  (interpreter: SynxError<F>) => interpreter.throwError(e);
-
-export const fromEither = <F extends URIS, E, A>(value: Either<Expr<F, E>, Expr<F, A>>): Expr<F, Either<E, A>> =>
-  (interpreter) => interpreter.fromEither(
-    value.isRight() ? right(value.value(interpreter)) : left(value.value(interpreter))
-  );
-
-export const mapEither = <F extends URIS, E, A, B>(
-  value: Expr<F, Either<E, A>>,
-  f: Expr<F, (a: A) => B>
-): Expr<F, Either<E, B>> =>
-  (interpreter) => interpreter.mapEither(value(interpreter), f(interpreter));
-
-export const chainEither = <F extends URIS, E, A, B>(
-  action: Expr<F, Either<E, A>>,
-  f: Expr<F, (a: A) => Either<E, B>>
-): Expr<F, Either<E, B>> =>
-  (interpreter) => interpreter.chainEither(action(interpreter), f(interpreter));
