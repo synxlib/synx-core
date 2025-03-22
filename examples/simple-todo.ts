@@ -1,8 +1,9 @@
 import { getElementById, getProperty, setProperty } from "@/lang/extensions/dom";
-import { foldM, on } from "@/lang/extensions/event";
+import { constantOn, foldM, on } from "@/lang/extensions/event";
 import { doFreer } from "@/lang/extensions/helpers";
 import { log } from "@/lang/extensions/debug";
 import { require } from "@/lang/extensions/error";
+import { pure } from "@/lang/extensions/freer";
 
 export const simpleTodoApp = doFreer(function* () {
     yield log("Starting app");
@@ -19,8 +20,10 @@ export const simpleTodoApp = doFreer(function* () {
         return [...todos, value];
       })
     );
+
+    const inputValueOnSubmit = yield constantOn(clickEvent, "");
   
-    // yield setProperty("value", "", input);
+    yield setProperty("value", inputValueOnSubmit, input);
     yield setProperty("textContent", todoList, listEl);
   });
 

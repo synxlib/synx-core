@@ -52,11 +52,16 @@ describe("Click Counter App", () => {
     expect(listEL).not.toBeNull();
 
     if (input && button && listEL) {
-      (input as HTMLInputElement).value = "World";
+      (input as HTMLInputElement).value = "Buy Milk";
       input.dispatchEvent(new dom.window.Event("input"));
       button.dispatchEvent(new dom.window.Event("click"));
-      expect(listEL.textContent).toBe(",World");
-      // expect(input.value).toBe("");
+      expect(listEL.textContent).toBe(",Buy Milk");
+      expect(input.value).toBe("");
+      (input as HTMLInputElement).value = "Go to School";
+      input.dispatchEvent(new dom.window.Event("input"));
+      button.dispatchEvent(new dom.window.Event("click"));
+      expect(listEL.textContent).toBe(",Buy Milk,Go to School");
+      expect(input.value).toBe("");
     }
   });
 });

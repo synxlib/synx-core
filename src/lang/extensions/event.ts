@@ -40,7 +40,8 @@ export type EventInstruction<A> =
 export const on = (
     event: string,
     target: HTMLElement | null,
-): Freer<EventSource> => impure({ tag: InstructionTags.On, event, target, next: pure });
+): Freer<EventSource> =>
+    impure({ tag: InstructionTags.On, event, target, next: pure });
 
 export const fold = <S, E>(
     event: EventSource,
@@ -91,3 +92,7 @@ export function eventMapInstr<A, B>(
 }
 
 export const isEventInstruction = makeTagGuard(Object.values(InstructionTags));
+
+export function constantOn<E, A>(event: EventSource, value: A): Freer<A> {
+    return foldM(event, value, () => pure(value));
+}
