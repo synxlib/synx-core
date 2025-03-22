@@ -9,6 +9,14 @@ const InstructionTags = {
     Require: "Require"
 } as const;
 
+type RequireInstruction<T, A> = {
+    tag: "Require";
+    error: string;
+    input: Either<string, T>;
+    next: (value: T) => A;
+  };
+
+
 export type ErrorInstruction<A> =
     | { tag: "Throw"; error: string }
     | {
@@ -16,12 +24,7 @@ export type ErrorInstruction<A> =
           tryBlock: Freer<any>;
           handler: (err: string) => Freer<A>;
       }
-    | {
-          tag: "Require";
-          error: string;
-          input: Either<string, any>;
-          next: (value: any) => A;
-      };
+    | RequireInstruction<any, A>;
 
 export const throwError = (msg: string): Freer<never> =>
     impure({ tag: "Throw", error: msg });

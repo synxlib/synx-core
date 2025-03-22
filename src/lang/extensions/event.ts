@@ -39,7 +39,7 @@ export type EventInstruction<A> =
 
 export const on = (
     event: string,
-    target: HTMLElement | null,
+    target: HTMLElement,
 ): Freer<EventSource> =>
     impure({ tag: InstructionTags.On, event, target, next: pure });
 

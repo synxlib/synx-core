@@ -8,12 +8,18 @@ const InstructionTags = {
     SetProperty: "SetProperty",
 } as const;
 
+type InstructionBase<T, A> = {
+    next: (value: T) => A;
+};
+
+type GetElementByIdInstr<A> = InstructionBase<Either<string, HTMLElement>, A> & {
+    tag: typeof InstructionTags.GetElementById;
+    id: string;
+};
+
+
 export type DomInstruction<A> =
-    | {
-          tag: typeof InstructionTags.GetElementById;
-          id: string;
-          next: (el: Either<string, HTMLElement>) => A;
-      }
+    | GetElementByIdInstr<A>
     | {
           tag: typeof InstructionTags.GetProperty;
           prop: string;
