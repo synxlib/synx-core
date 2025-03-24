@@ -4,6 +4,7 @@ import { errorMapInstr, isErrorInstruction } from "./error";
 import { eventMapInstr, isEventInstruction } from "./event";
 import { Freer, pure, impure } from "./freer";
 import { Instruction } from "./instruction";
+import { isListInstruction, listMapInstr } from "./list";
 
 export function doFreer<A>(gen: () => Generator<Freer<any>, A, any>): Freer<A> {
     const iterator = gen();
@@ -44,6 +45,7 @@ export function mapInstr<A, B>(
     if (isEventInstruction(instr)) return eventMapInstr(instr, f);
     if (isDebugInstruction(instr)) return debugMapInstr(instr, f);
     if (isErrorInstruction(instr)) return errorMapInstr(instr, f);
+    if (isListInstruction(instr)) return listMapInstr(instr, f);
 
     throw new Error(`Unhandled instruction tag: ${(instr as any).tag}`);
 }
@@ -79,3 +81,11 @@ export function bind<K extends string, A, R extends Record<string, any>>(
         );
 }
 
+export const sequence = <A>(...operations: Freer<any>[]): Freer<any> => {
+    if (operations.length === 0) return pure(undefined);
+    
+    return operations.reduce((acc, op) => 
+      flatMap(acc, () => op)
+    );
+  };
+  

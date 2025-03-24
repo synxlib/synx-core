@@ -7,12 +7,16 @@ const InstructionTags = {
 
 export type DebugInstruction<A> = {
     tag: typeof InstructionTags.Log;
-    message: string;
+    message: Freer<string>;
     next: () => A;
 };
 
-export const log = (message: string): Freer<void> =>
-    impure({ tag: InstructionTags.Log, message, next: () => pure(undefined) });
+export const log = (message: string | Freer<string>): Freer<void> =>
+    impure({
+      tag: "Log",
+      message: typeof message === "string" ? pure(message) : message,
+      next: () => pure(undefined),
+    });
 
 export function debugMapInstr<A, B>(instr: DebugInstruction<A>, f: (a: A) => B): DebugInstruction<B> {
     switch (instr.tag) {

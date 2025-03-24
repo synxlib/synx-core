@@ -1,42 +1,49 @@
 import { Either } from "@/generic/either";
-import { EventInstruction } from "@/lang/extensions/event";
+import { EventInstruction, EventSource } from "@/lang/extensions/event";
 import { Freer } from "@/lang/extensions/freer";
 import { run } from "./run";
-import { notify } from "./dependency";
+import { notify } from "./reactive-helpers";
 
-export function runEventInstr<A>(
-    instr: EventInstruction<Freer<A>>,
-): A {
+export function runEventInstr<A>(instr: EventInstruction<Freer<A>>): A {
     switch (instr.tag) {
         case "On": {
-            const subscribers: ((e: any) => void)[] = [];
-            const handler = (e: Event) => subscribers.forEach((cb) => cb(e));
-            instr.target?.addEventListener(instr.event, handler);
-            const eventSource: EventSource = {
-              subscribe: (cb) => subscribers.push(cb),
+            const event = run(instr.event);
+            const target = run(instr.target);
+            const listeners: ((e: any) => void)[] = [];
+            console.log("On event", event);
+            console.log("On target", target);
+            const handler = (e: Event) => {
+                console.log("Event fired");
+                listeners.forEach((cb) => cb(e));
             };
-            return run(instr.next(eventSource));
+            console.log("Adding event listeners");
+            target?.addEventListener(event, handler);
+            const source: EventSource = {
+                subscribe: (cb) => listeners.push(cb),
+            };
+            return run(instr.next(source));
         }
         case "Fold": {
-            let state = instr.initial;
-            const signal = { get: () => state };
-            instr.event.subscribe((e) => {
-                state = instr.reducer(state, e);
+            const event = run(instr.event);
+            let current = run(instr.initial);
+            const signal = { get: () => current };
+            event.subscribe((e) => {
+                current = run(instr.reducer(current, e));
                 notify(signal);
             });
             return run(instr.next(signal));
         }
         case "FoldM": {
-            let state = instr.initial;
-            const { event, reducer, next } = instr;
-            const signal = { get: () => state };
+            const event = run(instr.event);
+            let current = run(instr.initial);
+            const signal = { get: () => current };
+
             event.subscribe((e) => {
-              const eff = reducer(state, e);
-              const newState = run(eff);
-              state = newState;
-              notify(signal);
+                const eff = instr.reducer(current, e);
+                current = run(eff);
+                notify(signal);
             });
-            return run(next(signal));
+            return run(instr.next(signal));
         }
     }
 }

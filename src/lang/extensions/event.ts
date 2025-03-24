@@ -1,9 +1,13 @@
 import { Freer, impure, pure } from "./freer";
 import { makeTagGuard } from "./make-tag-guard";
 
-type EventSource = {
+export type EventSource = {
     subscribe: (cb: (e: unknown) => void) => void;
 };
+
+export type State<T> = {
+    get: () => T
+}
 
 const InstructionTags = {
     Fold: "Fold",
@@ -12,40 +16,40 @@ const InstructionTags = {
 } as const;
 
 type FoldInstr<S, E, A> = {
-    tag: typeof InstructionTags.Fold;
-    event: EventSource;
-    initial: S;
+    tag: "Fold";
+    event: Freer<EventSource>;
+    initial: Freer<S>;
     reducer: (state: S, event: E) => S;
     next: (state: S) => A;
-};
-
-type FoldMInstr<S, E, A> = {
-    tag: typeof InstructionTags.FoldM;
-    event: EventSource;
-    initial: S;
+  };
+  
+  type FoldMInstr<S, E, A> = {
+    tag: "FoldM";
+    event: Freer<EventSource>;
+    initial: Freer<S>;
     reducer: (state: S, event: E) => Freer<S>;
     next: (state: S) => A;
-};
+  };
 
 export type EventInstruction<A> =
     | {
           tag: typeof InstructionTags.On;
-          event: string;
-          target: HTMLElement | null;
+          event: Freer<string>;
+          target: Freer<HTMLElement>;
           next: (e: EventSource) => A;
       }
     | FoldInstr<any, any, A>
     | FoldMInstr<any, any, A>;
 
 export const on = (
-    event: string,
-    target: HTMLElement,
+    event: string | Freer<string>,
+    target: Freer<HTMLElement>,
 ): Freer<EventSource> =>
-    impure({ tag: InstructionTags.On, event, target, next: pure });
+    impure({ tag: InstructionTags.On, event: typeof event === "string" ? pure(event) : event, target, next: pure });
 
 export const fold = <S, E>(
-    event: EventSource,
-    initial: S,
+    event: Freer<EventSource>,
+    initial: Freer<S>,
     reducer: (state: S, event: E) => S,
 ): Freer<S> =>
     impure({
@@ -54,20 +58,13 @@ export const fold = <S, E>(
         initial,
         reducer,
         next: pure,
-    } as FoldInstr<S, E, Freer<S>>);
+    });
 
 export const foldM = <S, E>(
-    event: EventSource,
-    initial: S,
-    reducer: (state: S, event: E) => Freer<S>,
-): Freer<S> =>
-    impure({
-        tag: InstructionTags.FoldM,
-        event,
-        initial,
-        reducer,
-        next: pure,
-    } as FoldMInstr<S, E, Freer<S>>);
+    event: Freer<EventSource>,
+    initial: Freer<S>,
+    reducer: (state: S, event: E) => Freer<S>
+  ): Freer<S> => impure({ tag: "FoldM", event, initial, reducer, next: pure });
 
 export function eventMapInstr<A, B>(
     instr: EventInstruction<A>,
@@ -93,6 +90,6 @@ export function eventMapInstr<A, B>(
 
 export const isEventInstruction = makeTagGuard(Object.values(InstructionTags));
 
-export function constantOn<E, A>(event: EventSource, value: A): Freer<A> {
-    return foldM(event, value, () => pure(value));
+export function constantOn<E, A>(event: Freer<EventSource>, value: Freer<A>): Freer<A> {
+    return foldM(event, value, () => value);
 }

@@ -34,13 +34,14 @@ describe("Click Counter App", () => {
     // globalThis.window = dom.window;
 
     // Initialize the app within the JSDOM environment
-    // run(simpleTodoApp);
+    const result = run(simpleTodoApp());
+    if (result.isRight()) run(result.value);
 
-    const fallback = doFreer(function* () {
-      yield log("Running fallback...");
-    });
+    // const fallback = doFreer(function* () {
+    //   yield log("Running fallback...");
+    // });
 
-    const result = run(recoverWith(simpleTodoApp, fallback));
+    // const result = run(recoverWith(simpleTodoApp, fallback));
   });
 
   test("Clicking the button increments the counter", () => {
@@ -55,12 +56,12 @@ describe("Click Counter App", () => {
       (input as HTMLInputElement).value = "Buy Milk";
       input.dispatchEvent(new dom.window.Event("input"));
       button.dispatchEvent(new dom.window.Event("click"));
-      expect(listEL.textContent).toBe(",Buy Milk");
+      expect(listEL.textContent).toBe("Buy Milk");
       expect(input.value).toBe("");
       (input as HTMLInputElement).value = "Go to School";
       input.dispatchEvent(new dom.window.Event("input"));
       button.dispatchEvent(new dom.window.Event("click"));
-      expect(listEL.textContent).toBe(",Buy Milk,Go to School");
+      expect(listEL.textContent).toBe("Buy Milk, Go to School");
       expect(input.value).toBe("");
     }
   });

@@ -1,36 +1,54 @@
-import { getElementById, getProperty, setProperty } from "@/lang/extensions/dom";
-import { constantOn, foldM, on } from "@/lang/extensions/event";
-import { bind, Do, doFreer, flatMap, typedDo, typedDoYield, chain, map } from "@/lang/extensions/helpers";
+import {
+  getElementById,
+  getProperty,
+  setProperty,
+} from "@/lang/extensions/dom";
+import { constantOn, foldM, on, State } from "@/lang/extensions/event";
+import {
+  bind,
+  doFreer,
+  flatMap,
+  typedDo,
+  typedDoYield,
+  chain,
+  map,
+  sequence
+} from "@/lang/extensions/helpers";
 import { log } from "@/lang/extensions/debug";
-import { require } from "@/lang/extensions/error";
+import { allE, chainE, mapE, require } from "@/lang/extensions/error";
 import { Freer, pure } from "@/lang/extensions/freer";
-import { Either } from "@/generic/either";
-import { pipe } from "fp-ts/lib/function";
+import { concat, join } from "@/lang/extensions/list";
+import { right } from "@/generic/either";
 
-export const simpleTodoApp = doFreer(function* () {
-    yield log("Starting app");
-  
-    const input = yield require(yield getElementById("todo-input"));
+export const simpleTodoApp = () => {
+  // === Example Program: simpleTodoApp ===
+  const inputEither = getElementById("todo-input");
+  const buttonEither = getElementById("todo-button");
+  const listElEither = getElementById("todo-list");
 
-    const button = yield require(yield getElementById("todo-button"));
-    const listEl = yield require(yield getElementById("todo-list"));
-  
-    const clickEvent = yield on("click", button);
-  
-    const todoList = yield foldM<string[], EventSource>(clickEvent, [""], (todos, _) =>
-      typedDoYield(function* (): Generator<Freer<any>, string[], any> {
-        const value: string = yield getProperty("value", input);
-        return [...todos, value];
-      })
-    );
+  return mapE(
+    allE([inputEither, buttonEither, listElEither]),
+    ([input, button, listEl]) => {
+      console.log(input, button, listEl);
+      const clickEvent = on("click", pure(button));
 
-    const inputValueOnSubmit = yield constantOn(clickEvent, "");
-  
-    yield setProperty("value", inputValueOnSubmit, input);
-    yield setProperty("textContent", todoList, listEl);
-  });
+      const todoList = foldM(clickEvent, pure([] as string[]), (_, __) => {
+        console.log("Running fold");
+        const value = getProperty("value", pure(input));
+        return concat(pure(_), value);
+      });
 
-// clickCounterApp()(new RInterpreter());
+      const todoListStr = join(todoList, pure(", "));
+
+      const inputValueOnSubmit = foldM(clickEvent, pure(""), () => pure(""))
+
+      return sequence(
+        setProperty("textContent", todoListStr, pure(listEl)),
+        setProperty("value", inputValueOnSubmit, pure(input)),
+      );
+    }
+  );
+};
 
 // export const simpleTodoApp = pipe(
 //     pure({}),

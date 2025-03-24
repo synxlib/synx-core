@@ -5,8 +5,10 @@ import { pure } from "@/lang/extensions/freer";
 
 export function runErrorInstr<A>(instr: ErrorInstruction<A>): A {
     switch (instr.tag) {
-        case "Throw":
-            throw new Error(instr.error);
+        case "Throw": {
+            const error = run(instr.error);
+            throw new Error(error);
+        }
     
         case "Catch": {
             try {
