@@ -6,7 +6,7 @@ import { doFreer } from "@/lang/extensions/helpers";
 import { log } from "@/lang/extensions/debug";
 import { recoverWith } from "@/lang/extensions/error";
 
-describe("Click Counter App", () => {
+describe("Simple TODO App", () => {
   let dom: JSDOM;
   let document: Document;
 
@@ -36,15 +36,9 @@ describe("Click Counter App", () => {
     // Initialize the app within the JSDOM environment
     const result = run(simpleTodoApp());
     if (result.isRight()) run(result.value);
-
-    // const fallback = doFreer(function* () {
-    //   yield log("Running fallback...");
-    // });
-
-    // const result = run(recoverWith(simpleTodoApp, fallback));
   });
 
-  test("Clicking the button increments the counter", () => {
+  test("Entering new todo add it to the list and clears input", () => {
     const input = document.getElementById("todo-input") as HTMLInputElement;
     const button = document.getElementById("todo-button");
     const listEL = document.getElementById("todo-list");

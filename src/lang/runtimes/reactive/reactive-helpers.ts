@@ -58,7 +58,6 @@ export function handleReactive<A>(
     inputs: Freer<any>[],
     continuation: (...resolved: any[]) => Freer<A>,
 ): Freer<A> {
-    console.log("handleReactive");
     const recur = (index: number, acc: any[]): Freer<any> => {
         if (index >= inputs.length) {
             let result: A | undefined;
