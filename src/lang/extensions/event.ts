@@ -64,7 +64,7 @@ export const foldM = <S, E>(
     event: Freer<EventSource>,
     initial: Freer<S>,
     reducer: (state: S, event: E) => Freer<S>
-  ): Freer<S> => impure({ tag: "FoldM", event, initial, reducer, next: pure });
+  ): Freer<S> => impure({ tag: InstructionTags.FoldM, event, initial, reducer, next: pure });
 
 export function eventMapInstr<A, B>(
     instr: EventInstruction<A>,

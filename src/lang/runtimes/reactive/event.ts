@@ -23,7 +23,7 @@ export function runEventInstr<A>(instr: EventInstruction<Freer<A>>): A {
             let current = run(instr.initial);
             const signal = { get: () => current };
             event.subscribe((e) => {
-                current = run(instr.reducer(current, e));
+                current = instr.reducer(current, e);
                 notify(signal);
             });
             return run(instr.next(signal));
