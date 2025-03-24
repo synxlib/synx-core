@@ -1,7 +1,7 @@
 import { JSDOM } from "jsdom";
-import { RInterpreter } from "../src/lang/interpreters/meta-circular";
-import { clickCounterApp } from "./counter"; // Adjust path as needed
+import { clickCounterApp } from "./counter"; 
 import { describe, test, expect, beforeEach } from "vitest";
+import { run } from "@/lang/runtimes/reactive/run";
 
 describe("Click Counter App", () => {
   let dom: JSDOM;
@@ -21,12 +21,12 @@ describe("Click Counter App", () => {
 
     document = dom.window.document;
     globalThis.document = document;
-    globalThis.window = dom.window;
+    // globalThis.window = dom.window;
 
-    const interpreter = RInterpreter();
 
     // Initialize the app within the JSDOM environment
-    clickCounterApp()(interpreter);
+    const result = run(clickCounterApp());
+    if (result.isRight()) run(result.value);
   });
 
   test("Initial counter should be 'Clicks: 0'", () => {

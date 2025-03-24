@@ -1,15 +1,14 @@
-import { URIS } from "@/generic/hkt";
+import { mul } from "@/lang/extensions/math";
+import { Freer, pure } from "@/lang/extensions/freer";
+import { run } from "@/lang/runtimes/reactive/run";
 import { throwError } from "@/lang/extensions/error";
-import { Expr } from "@/lang/extensions/common";
-import { num, mul } from "@/lang/extensions/math";
-import { RInterpreter } from "@/lang/interpreters/meta-circular";
 
-export function powerF<F extends URIS>(
+export function powerF(
   n: number,
-  x: Expr<F, number>
-): Expr<F, number> {
+  x: Freer<number>
+): Freer<number> {
   if (n === 0) {
-    return num(1);
+    return pure(1);
   } else if (n > 0) {
     // Compose operations to create x * powerF(n-1, x)
     return mul(x, powerF(n - 1, x));
@@ -19,11 +18,13 @@ export function powerF<F extends URIS>(
   }
 }
 
-const result = powerF(12, num(3))(new RInterpreter());
+const result = run(powerF(12, pure(3)));
 
-console.log(result.value);
+console.log(result);
 
 
-const error = powerF(-2, num(3))(new RInterpreter());
+const error = run(powerF(-2, pure(3)));
 
-console.log(error.value);
+console.log(error);
+
+// pnpm exec tsx examples/powerF.ts

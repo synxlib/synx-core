@@ -1,7 +1,7 @@
 import { Either, left, right } from "@/generic/either";
-import { Freer, impure, mapFreer, pure } from "./freer";
+import { Freer, impure, pure } from "./freer";
 import { makeTagGuard } from "./make-tag-guard";
-import { log } from "./debug";
+// import { log } from "./debug";
 import { flatMap } from "./helpers";
 
 const InstructionTags = {

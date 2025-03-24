@@ -1,11 +1,9 @@
-import { concat, str } from "@/lang/extensions/string";
-import { toStr } from "@/lang/show";
-import { add } from "@/lang/extensions/math";
 import { getElementById, setProperty } from "@/lang/extensions/dom";
-import { on } from "@/lang/extensions/event";
 import { pure } from "@/lang/extensions/freer";
-import { foldM } from "@/lang/extensions/event";
 import { mapE, allE } from "@/lang/extensions/error";
+import { combine } from "@/lang/extensions/string";
+import { foldM, on } from "@/lang/extensions/event";
+import { show } from "@/lang/extensions/show";
 
 export const clickCounterApp = () => {
   console.log("Starting app")
@@ -17,11 +15,11 @@ export const clickCounterApp = () => {
     allE([buttonEither, displayEither]),
     (([button, display]) => {
       const clickEvent = on("click", pure(button));
-      const count = foldM(clickEvent, pure(0), (n) => add(n, pure(1)));
-      const displayText = concat(str("Clicks: "), toStr(count));
+      const count = foldM(clickEvent, pure(0), (n) => pure(n + 1));
+      const displayText = combine(pure("Clicks: "), show(count));
 
       // Update property
-      return setProperty(str("textContent"), displayText, display);
+      return setProperty("textContent", displayText, pure(display));
     })
   )
 };

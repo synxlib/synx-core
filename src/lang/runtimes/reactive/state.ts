@@ -1,4 +1,5 @@
 import { StateInstr } from "@/lang/extensions/state";
+import { run } from "./run";
 
 export function runStateInstr<S, A>(
     instr: StateInstr<unknown, A>,

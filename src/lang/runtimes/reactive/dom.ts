@@ -1,8 +1,7 @@
 import { DomInstruction } from "@/lang/extensions/dom";
 import { Freer } from "@/lang/extensions/freer";
 import { run } from "./run";
-import { flatMap } from "@/lang/extensions/helpers";
-import { withReactive } from "./reactive-helpers";
+import { handleReactive, withReactive } from "./reactive-helpers";
 
 export function runDomInstr<A>(instr: DomInstruction<Freer<A>>): A {
     switch (instr.tag) {
@@ -20,15 +19,19 @@ export function runDomInstr<A>(instr: DomInstruction<Freer<A>>): A {
         case "SetProperty": {
             const prop = run(instr.prop);
             const target = run(instr.target);
-            const value = instr.value;
-            return run(
-              flatMap(value, (v: any) => {
-                withReactive(v, (val: any) => {
-                  if (target) target[prop] = val;
-                });
+            // const value = instr.value;
+            return handleReactive([instr.value], (value) => {
+                if (target) target[prop] = value;
                 return instr.next();
-              })
-            );
+            })
+            // return run(
+            //   flatMap(value, (v: any) => {
+            //     withReactive(v, (val: any) => {
+            //       if (target) target[prop] = val;
+            //     });
+            //     return instr.next();
+            //   })
+            // );
         }
     }
 }

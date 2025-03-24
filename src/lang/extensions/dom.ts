@@ -1,7 +1,7 @@
 import { Either } from "@/generic/either";
 import { Freer, impure, pure } from "./freer";
 import { makeTagGuard } from "./make-tag-guard";
-import { State } from "./event";
+// import { State } from "./event";
 import { fromNullable } from "./error";
 
 const InstructionTags = {
@@ -9,10 +9,6 @@ const InstructionTags = {
     GetProperty: "GetProperty",
     SetProperty: "SetProperty",
 } as const;
-
-type InstructionBase<T, A> = {
-    next: (value: T) => A;
-};
 
 type GetElementByIdInstr<A> = {
     tag: typeof InstructionTags.GetElementById;
@@ -77,7 +73,7 @@ export function domMapInstr<A, B>(
         case InstructionTags.GetElementById:
             return {
                 ...instr,
-                next: (el: Either<string, HTMLElement>) => f(instr.next(el)),
+                next: (el: HTMLElement | null) => f(instr.next(el)),
             };
         case InstructionTags.GetProperty:
             return { ...instr, next: (v: string) => f(instr.next(v)) };

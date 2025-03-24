@@ -57,7 +57,7 @@ export function withReactiveValues(
 export function handleReactive<A>(
     inputs: Freer<any>[],
     continuation: (...resolved: any[]) => Freer<A>,
-): Freer<A> {
+): A {
     const recur = (index: number, acc: any[]): Freer<any> => {
         if (index >= inputs.length) {
             let result: A | undefined;
@@ -73,5 +73,5 @@ export function handleReactive<A>(
         }
         return flatMap(inputs[index], (val) => recur(index + 1, [...acc, val]));
     };
-    return recur(0, []);
+    return run(recur(0, []));
 }
