@@ -8,7 +8,7 @@ export function runShowInstr<A>(instr: ShowInstruction<A>): A {
             return handleReactive([instr.value], (value) => {
                 const typeId = instr.getTypeId(value);
                 const formatted = showRegistry.format(typeId, value);
-                return pure(instr.next(formatted));
+                return instr.next(formatted);
             });
         }
     }

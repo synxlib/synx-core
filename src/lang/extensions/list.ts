@@ -6,21 +6,21 @@ const InstructionTags = {
     Join: "Join",
 } as const;
 
-type ConcatInstr<A> = {
+type ConcatInstr<A, B> = {
     tag: typeof InstructionTags.Concat;
-    list: Freer<A[]>;
-    value: Freer<A>;
-    next: (result: Array<A>) => A;
+    list: Freer<B[]>;
+    value: Freer<B>;
+    next: (result: Array<B>) => A;
 };
 
-type JoinInstr<A> = {
+type JoinInstr<A, B> = {
     tag: typeof InstructionTags.Join;
-    list: Freer<A[]>;
+    list: Freer<B[]>;
     str: Freer<string>;
     next: (result: string) => A;
 };
 
-export type ListInstruction<A> = ConcatInstr<any> | JoinInstr<any>;
+export type ListInstruction<A> = ConcatInstr<A, any> | JoinInstr<A, any>;
 
 export const concat = <A>(list: Freer<Array<A>>, value: Freer<A>): Freer<Array<A>> =>
     impure({ tag: InstructionTags.Concat, list, value, next: pure });

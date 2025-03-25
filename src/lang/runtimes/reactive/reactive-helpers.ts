@@ -46,6 +46,7 @@ export function withReactiveValues(
             if (!signalStore.has(val)) signalStore.set(val, new Set());
             const update = () => {
                 resolved[index] = val.get();
+                console.log("resolved", resolved);
                 effect(...resolved);
             };
             signalStore.get(val)!.add(update);
@@ -56,7 +57,7 @@ export function withReactiveValues(
 
 export function handleReactive<A>(
     inputs: Freer<any>[],
-    continuation: (...resolved: any[]) => Freer<A>,
+    continuation: (...resolved: any[]) => A,
 ): A {
     const recur = (index: number, acc: any[]): Freer<any> => {
         if (index >= inputs.length) {
@@ -64,14 +65,17 @@ export function handleReactive<A>(
             withReactiveValues(acc, (...resolved) => {
                 // Only capture the first result to return
                 if (result === undefined) {
-                    result = run(continuation(...resolved));
+                    result = continuation(...resolved);
                 } else {
-                    run(continuation(...resolved)); // Still run for side effects
+                    continuation(...resolved); // Still run for side effects
                 }
             });
             return pure(result!);
         }
-        return flatMap(inputs[index], (val) => recur(index + 1, [...acc, val]));
+        return flatMap(inputs[index], (val) => {
+            console.log("recur", val);
+            return recur(index + 1, [...acc, val]);
+        });
     };
     return run(recur(0, []));
 }
