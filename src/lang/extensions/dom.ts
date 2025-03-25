@@ -1,86 +1,117 @@
-import { Either } from "@/generic/either";
-import { Freer, impure, pure } from "./freer";
+import { Either, left } from "@/generic/either";
+import { Free } from "@/generic/free";
 import { makeTagGuard } from "./make-tag-guard";
-// import { State } from "./event";
-import { fromNullable } from "./error";
+import { Instruction } from "./instruction";
 
-const InstructionTags = {
+export const InstructionTags = {
     GetElementById: "GetElementById",
     GetProperty: "GetProperty",
     SetProperty: "SetProperty",
 } as const;
 
-type GetElementByIdInstr<A> = {
+type GetElementByIdInstr = {
     tag: typeof InstructionTags.GetElementById;
-    id: Freer<string>;
-    next: (el: HTMLElement | null) => A
+    id: string;
+    resultType: Either<string, HTMLElement>;
 };
 
-export type DomInstruction<A> =
-    | GetElementByIdInstr<A>
+export type DomInstruction =
+    | GetElementByIdInstr
     | {
           tag: typeof InstructionTags.GetProperty;
-          prop: Freer<string>;
-          target: Freer<HTMLElement>;
-          next: (value: string) => A;
+          prop: string;
+          target: HTMLElement;
+          resultType: string;
       }
     | {
           tag: typeof InstructionTags.SetProperty;
-          prop: Freer<string>;
-          value: Freer<string>;
-          target: Freer<HTMLElement>;
-          next: () => A;
+          prop: string;
+          value: string;
+          target: HTMLElement;
+          resultType: void;
       };
 
 export const getElementById = (
-    id: string | Freer<string>,
-): Freer<Either<string, HTMLElement>> =>
-    impure({
-        tag: "GetElementById",
-        id: typeof id === "string" ? pure(id) : id,
-        next: (el) => pure(fromNullable<HTMLElement>(el, `Element with id not found`)),
-    });
+    id: string | Free<Instruction, string>,
+): Free<Instruction, Either<string, HTMLElement>> =>
+    typeof id === "string"
+        ? Free.liftF({
+              tag: InstructionTags.GetElementById,
+              id,
+              resultType: left("") as Either<string, HTMLElement>,
+          })
+        : id.flatMap((idVal) =>
+              Free.liftF({
+                  tag: InstructionTags.GetElementById,
+                  id: idVal,
+                  resultType: left("") as Either<string, HTMLElement>,
+              }),
+          );
 
 export const getProperty = (
-    prop: string | Freer<string>,
-    target: Freer<HTMLElement>,
-): Freer<string> =>
-    impure({
-        tag: "GetProperty",
-        prop: typeof prop === "string" ? pure(prop) : prop,
-        target,
-        next: pure,
-    });
+    prop: string | Free<Instruction, string>,
+    target: Free<Instruction, HTMLElement>,
+): Free<Instruction, string> =>
+    target.flatMap((targetVal) =>
+        typeof prop === "string"
+            ? Free.liftF({
+                  tag: InstructionTags.GetProperty,
+                  prop,
+                  target: targetVal,
+                  resultType: "",
+              })
+            : prop.flatMap((propVal) =>
+                  Free.liftF({
+                      tag: InstructionTags.GetProperty,
+                      prop: propVal,
+                      target: targetVal,
+                      resultType: "",
+                  }),
+              ),
+    );
 
 export const setProperty = (
-    prop: string | Freer<string>,
-    value: Freer<string>,
-    target: Freer<HTMLElement>,
-): Freer<void> =>
-    impure({
-        tag: "SetProperty",
-        prop: typeof prop === "string" ? pure(prop) : prop,
-        value,
-        target,
-        next: () => pure(undefined),
-    });
+    prop: string | Free<Instruction, string>,
+    value: Free<Instruction, string>,
+    target: Free<Instruction, HTMLElement>,
+): Free<Instruction, void> =>
+    target.flatMap((targetVal) =>
+        value.flatMap((val) =>
+            typeof prop === "string"
+                ? Free.liftF({
+                      tag: InstructionTags.SetProperty,
+                      prop,
+                      value: val,
+                      target: targetVal,
+                      resultType: undefined,
+                  })
+                : prop.flatMap((propVal) =>
+                      Free.liftF({
+                          tag: InstructionTags.SetProperty,
+                          prop: propVal,
+                          value: val,
+                          target: targetVal,
+                          resultType: undefined,
+                      }),
+                  ),
+        ),
+    );
 
-export function domMapInstr<A, B>(
-    instr: DomInstruction<A>,
-    f: (a: A) => B,
-): DomInstruction<B> {
-    switch (instr.tag) {
-        case InstructionTags.GetElementById:
-            return {
-                ...instr,
-                next: (el: HTMLElement | null) => f(instr.next(el)),
-            };
-        case InstructionTags.GetProperty:
-            return { ...instr, next: (v: string) => f(instr.next(v)) };
-        case InstructionTags.SetProperty:
-            return { ...instr, next: () => f(instr.next()) };
-    }
-}
+// export function domMapInstr<A, B>(
+//     instr: DomInstruction,
+//     f: (a: A) => B,
+// ): DomInstruction {
+//     switch (instr.tag) {
+//         case InstructionTags.GetElementById:
+//             return {
+//                 ...instr,
+//                 next: (el: HTMLElement | null) => f(instr.next(el)),
+//             };
+//         case InstructionTags.GetProperty:
+//             return { ...instr, next: (v: string) => f(instr.next(v)) };
+//         case InstructionTags.SetProperty:
+//             return { ...instr, next: () => f(instr.next()) };
+//     }
+// }
 
 export const isDomInstruction = makeTagGuard(Object.values(InstructionTags));
-

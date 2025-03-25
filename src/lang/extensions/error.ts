@@ -1,8 +1,9 @@
+import { Free } from "@/generic/free";
 import { Either, left, right } from "@/generic/either";
-import { Freer, impure, pure } from "./freer";
 import { makeTagGuard } from "./make-tag-guard";
+import { Instruction } from "./instruction";
+import { log } from "./debug";
 // import { log } from "./debug";
-import { flatMap } from "./helpers";
 
 const InstructionTags = {
     Throw: "Throw",
@@ -10,88 +11,114 @@ const InstructionTags = {
     Require: "Require",
 } as const;
 
-type RequireInstruction<T, A> = {
-    tag: "Require";
-    error: Freer<string>;
-    input: Either<string, T>;
-    next: (value: T) => A;
+export type ThrowInstruction = {
+    tag: typeof InstructionTags.Throw;
+    error: string;
+    resultType: never;
 };
 
-export type ErrorInstruction<A> =
-    | { tag: "Throw"; error: Freer<string> }
-    | {
-          tag: "Catch";
-          tryBlock: Freer<any>;
-          handler: (err: string) => Freer<A>;
-      }
-    | RequireInstruction<any, A>;
+export type CatchInstruction<A> = {
+    tag: typeof InstructionTags.Catch;
+    tryBlock: Free<Instruction, A>;
+    handler: (err: string) => Free<Instruction, A>;
+    resultType: A;
+};
 
-export const throwError = (msg: string | Freer<string>): Freer<never> =>
-    impure({ tag: "Throw", error: typeof msg === "string" ? pure(msg) : msg });
+export type RequireInstruction<T> = {
+    tag: typeof InstructionTags.Require;
+    error: string;
+    input: Either<string, T>;
+    resultType: T;
+};
+
+// Union type for error instructions
+export type ErrorInstruction<A = any, T = any> =
+    | ThrowInstruction
+    | CatchInstruction<A>
+    | RequireInstruction<T>;
+
+// Smart constructors for error operations
+export const throwError = (
+    msg: string | Free<Instruction, string>,
+): Free<Instruction, never> => {
+    const msgComp =
+        typeof msg === "string" ? Free.pure<Instruction, string>(msg) : msg;
+
+    return msgComp.flatMap((errorMsg) =>
+        Free.liftF<Instruction, never>({
+            tag: InstructionTags.Throw,
+            error: errorMsg,
+            resultType: undefined as never,
+        }),
+    );
+};
 
 export const catchError = <A>(
-    tryBlock: Freer<A>,
-    handler: (msg: string) => Freer<A>,
-): Freer<A> =>
-    impure({
+    tryBlock: Free<Instruction, A>,
+    handler: (msg: string) => Free<Instruction, A>,
+): Free<Instruction, A> => {
+    return Free.liftF<Instruction, A>({
         tag: InstructionTags.Catch,
         tryBlock,
-        handler: (err) => pure(handler(err)),
+        handler,
+        resultType: undefined as unknown as A,
     });
+};
 
-export const require = <A>(e: Either<string, A>): Freer<A> =>
-    e.isRight()
-        ? pure(e.value)
-        : // TODO Use contructors from debug
-          impure({
-              tag: "Log",
-              message: pure(e.value),
-              next: () => {
-                  throw new Error(e.value);
-              },
-          });
-
-export const requireE = <A>(fa: Freer<Either<string, A>>): Freer<A> =>
-    flatMap(fa, (either) =>
-        either.isRight() ? pure(either.value) : throwError(either.value),
-    );
-
-export const mapLeft = <A>(
-    input: Either<string, A>,
-    f: (msg: string) => string,
-): Either<string, A> => (input.isLeft() ? left(f(input.value)) : input);
-
-export const mapError = <A>(
-    prog: Freer<A>,
-    f: (err: string) => string,
-): Freer<A> => catchError(prog, (e) => throwError(f(e)));
-
-export const orElse = <A>(prog: Freer<A>, fallback: A): Freer<A> =>
-    catchError(prog, () => pure(fallback));
-
-export const recoverWith = <A>(prog: Freer<A>, alt: Freer<A>): Freer<A> =>
-    catchError(prog, () => alt);
-
-export function errorMapInstr<A, B>(
-    instr: ErrorInstruction<A>,
-    f: (a: A) => B,
-): ErrorInstruction<B> {
-    switch (instr.tag) {
-        case InstructionTags.Throw:
-            return { ...instr }; // nothing to map
-
-        case InstructionTags.Catch:
-            return {
-                ...instr,
-                handler: (err) => mapFreer(instr.handler(err), f),
-            };
-        case InstructionTags.Require:
-            return {
-                ...instr,
-                next: (s) => f(instr.next(s)),
-            };
+export const require = <T>(e: Either<string, T>): Free<Instruction, T> => {
+    if (e.isRight()) {
+        return Free.pure(e.value);
     }
-}
+
+    return Free.liftF<Instruction, T>({
+        tag: InstructionTags.Require,
+        error: e.value,
+        input: e,
+        resultType: undefined as unknown as T,
+    });
+};
+
+// export const requireE = <A>(fa: Free<Instruction, Either<string, A>>): Freer<A> =>
+//     flatMap(fa, (either) =>
+//         either.isRight() ? pure(either.value) : throwError(either.value),
+//     );
+//
+// export const mapLeft = <A>(
+//     input: Either<string, A>,
+//     f: (msg: string) => string,
+// ): Either<string, A> => (input.isLeft() ? left(f(input.value)) : input);
+//
+// export const mapError = <A>(
+//     prog: Free<Instruction, A>,
+//     f: (err: string) => string,
+// ): Free<Instruction, A> => catchError(prog, (e) => throwError(f(e)));
+//
+// export const orElse = <A>(prog: Free<Instruction, A>, fallback: A): Freer<A> =>
+//     catchError(prog, () => pure(fallback));
+//
+// export const recoverWith = <A>(prog: Free<Instruction, A>, alt: Freer<A>): Freer<A> =>
+//     catchError(prog, () => alt);
+
+// export function errorMapInstr<A, B>(
+//     instr: ErrorInstruction<A>,
+//     f: (a: A) => B,
+// ): ErrorInstruction<B> {
+//     switch (instr.tag) {
+//         case InstructionTags.Throw:
+//             return { ...instr }; // nothing to map
+//
+//         case InstructionTags.Catch:
+//             return {
+//                 ...instr,
+//                 handler: (err) => mapFreer(instr.handler(err), f),
+//             };
+//         case InstructionTags.Require:
+//             return {
+//                 ...instr,
+//                 next: (s) => f(instr.next(s)),
+//             };
+//     }
+// }
 
 export const isErrorInstruction = makeTagGuard(Object.values(InstructionTags));
 
@@ -124,72 +151,68 @@ export const eitherAll = <E, A>(eithers: Either<E, A>[]): Either<E, A[]> => {
     return right(results);
 };
 
-// Map over a Freer<Either<E, A>> to get a Freer<Either<E, B>>
+// Map over a Free<Instruction, Either<E, A>> to get a Freer<Either<E, B>>
 export const mapE = <E, A, B>(
-    fa: Freer<Either<E, A>>,
+    fa: Free<Instruction, Either<E, A>>,
     f: (a: A) => B,
-): Freer<Either<E, B>> => flatMap(fa, (either) => pure(eitherMap(either, f)));
+): Free<Instruction, Either<E, B>> =>
+    fa.flatMap((either) => Free.pure(eitherMap(either, f)));
 
-
-// Chain operations on Freer<Either<E, A>>
+// Chain operations on Free<Instruction, Either<E, A>>
 export const chainE = <E, A, B>(
-    fa: Freer<Either<E, A>>,
-    f: (a: A) => Freer<Either<E, B>>,
-): Freer<Either<E, B>> =>
-    flatMap(fa, (either) =>
-        either.isRight() ? f(either.value) : pure(left(either.value)),
+    fa: Free<Instruction, Either<E, A>>,
+    f: (a: A) => Free<Instruction, Either<E, B>>,
+): Free<Instruction, Either<E, B>> =>
+    fa.flatMap((either) =>
+        either.isRight() ? f(either.value) : Free.pure(left(either.value)),
     );
 
+// Lift a regular value into Free<Instruction, Either<E, A>>
+export const ofE = <A>(value: A): Free<Instruction, Either<string, A>> =>
+    Free.pure(right(value));
 
-// Lift a regular value into Freer<Either<E, A>>
-export const ofE = <A>(value: A): Freer<Either<string, A>> =>
-    pure(right(value));
-
-// Sequence multiple Freer<Either<E, A>> values
+// Sequence multiple Free<Instruction, Either<E, A>> values
 export const allE = <E, A>(
-    fas: Freer<Either<E, A>>[],
-): Freer<Either<E, A[]>> => {
-    if (fas.length === 0) return pure(right([]));
+    fas: Free<Instruction, Either<E, A>>[],
+): Free<Instruction, Either<E, A[]>> => {
+    if (fas.length === 0) return Free.pure(right([]));
 
     return fas.reduce(
         (acc, next) =>
             chainE(acc, (values) =>
-                chainE(next, (value) => pure(right([...values, value]))),
+                chainE(next, (value) => Free.pure(right([...values, value]))),
             ),
-        pure(right([]) as Either<E, A[]>),
+        Free.pure(right([]) as Either<E, A[]>),
     );
 };
 
 // Apply a function to a successful value, or log the error and throw
 export const withRequire = <A, B>(
-    fa: Freer<Either<string, A>>,
-    f: (a: A) => Freer<B>,
-): Freer<B> =>
-    flatMap(fa, (either) =>
-        either.isRight()
-            ? f(either.value)
-            : impure({
-                  tag: "Log",
-                  message: pure(`Error: ${either.value}`),
-                  next: () =>
-                      throwError(`Required value missing: ${either.value}`),
-              }),
-    );
+    fa: Free<Instruction, Either<string, A>>,
+    f: (a: A) => Free<Instruction, B>,
+): Free<Instruction, B> => {
+    return fa.flatMap((either) => {
+        if (either.isRight()) {
+            // Continue with the computation if we have a value
+            return f(either.value);
+        } else {
+            // Log the error and throw if it's a Left
+            return log(`Error: ${either.value}`).flatMap(() =>
+                throwError(`Required value missing: ${either.value}`),
+            );
+        }
+    });
+};
 
 // Try to get a successful value, or use a default with a warning
 export const withDefault = <A>(
-    fa: Freer<Either<string, A>>,
+    fa: Free<Instruction, Either<string, A>>,
     defaultValue: A,
-): Freer<A> =>
-    flatMap(fa, (either) =>
+): Free<Instruction, A> =>
+    fa.flatMap((either) =>
         either.isRight()
-            ? pure(either.value)
-            : impure({
-                  tag: "Log",
-                  message: pure(
-                      `Warning: Using default value because: ${either.value}`,
-                  ),
-                  next: () => pure(defaultValue),
-              }),
+            ? Free.pure(either.value)
+            : log(
+                  `Warning: Using default value because: ${either.value}`,
+              ).flatMap(() => Free.pure(defaultValue)),
     );
-

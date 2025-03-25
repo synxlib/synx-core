@@ -8,12 +8,12 @@ import { ShowInstruction } from "./show";
 import { StateInstr } from "./state";
 import { StringInstruction } from "./string";
 
-export type Instruction<A> =
-    | EventInstruction<A>
-    | DomInstruction<A>
-    | DebugInstruction<A>
-    | ErrorInstruction<A>
-    | ListInstruction<A>
-    | MathInstruction<A>
-    | StringInstruction<A>
-    | ShowInstruction<A>
+export type Instruction =
+    | EventInstruction
+    | DomInstruction
+    | DebugInstruction
+    | ErrorInstruction
+    | ListInstruction
+    | MathInstruction
+    | StringInstruction
+    | ShowInstruction;

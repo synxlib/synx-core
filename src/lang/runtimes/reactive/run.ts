@@ -18,21 +18,26 @@ import { isStringInstruction } from "@/lang/extensions/string";
 import { runStringInstr } from "./string";
 import { isShowInstruction } from "@/lang/extensions/show";
 import { runShowInstr } from "./show";
+import { Free } from "@/generic/free";
 
-export function run<A>(program: Freer<A>, state: any = undefined): A {
-    if (program.kind === "Pure") return program.value;
-    return runInstr(program.instr, state);
-}
+export function run<A>(program: Free<Instruction, A>): A {
+    console.log("program", program);
+    // Create an interpreter that delegates based on instruction type
+    const interpret = <X>(
+        effect: Instruction & { resultType: X },
+    ): X | { get: (...args: any[]) => X; _dependencies: any[] } => {
+        if (isDomInstruction(effect)) return runDomInstr(effect);
+        if (isEventInstruction(effect)) return runEventInstr(effect);
+        if (isDebugInstruction(effect)) return runDebugInstr(effect);
+        if (isListInstruction(effect)) return runListInstruction(effect);
+        if (isErrorInstruction(effect)) return runErrorInstr(effect);
+        if (isMathInstruction(effect)) return runMathInstr(effect);
+        if (isStringInstruction(effect)) return runStringInstr(effect);
+        if (isShowInstruction(effect)) return runShowInstr(effect);
 
-function runInstr<A>(instr: Instruction<Freer<A>>, state: any = undefined): A {
-    if (isDomInstruction(instr)) return runDomInstr(instr);
-    if (isEventInstruction(instr)) return runEventInstr(instr);
-    if (isDebugInstruction(instr)) return runDebugInstr(instr);
-    if (isListInstruction(instr)) return runListInstruction(instr);
-    if (isErrorInstruction(instr)) return runErrorInstr(instr);
-    if (isMathInstruction(instr)) return runMathInstr(instr);
-    if (isStringInstruction(instr)) return runStringInstr(instr);
-    if (isShowInstruction(instr)) return runShowInstr(instr);
-    // if (isStateInstruction(instr)) return runStateInstr(instr, state);
-    throw new Error(`Unknown instruction: ${(instr as any).tag}`);
+        throw new Error(`Unknown instruction: ${(effect as any).tag}`);
+    };
+
+    // Use the built-in run method with our interpreter
+    return program.run(interpret);
 }

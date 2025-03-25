@@ -1,46 +1,68 @@
-import { Freer, impure, pure } from "./freer";
+import { Free } from "@/generic/free";
 import { makeTagGuard } from "./make-tag-guard";
 import { showRegistry } from "./show";
 
-const InstructionTags = {
+export const InstructionTags = {
     Add: "Add",
     Mul: "Mul",
 } as const;
 
-export type MathInstruction<A> =
+export type MathInstruction =
     | {
           tag: typeof InstructionTags.Add;
-          a: Freer<number>;
-          b: Freer<number>;
-          next: (result: number) => A;
+          a: number;
+          b: number;
+          resultType: number;
       }
     | {
           tag: typeof InstructionTags.Mul;
-          a: Freer<number>;
-          b: Freer<number>;
-          next: (result: number) => A;
+          a: number;
+          b: number;
+          resultType: number;
       };
 
-export const add = <A>(a: Freer<number>, b: Freer<number>): Freer<number> =>
-    impure({ tag: InstructionTags.Add, a, b, next: pure });
-
-export const mul = <A>(a: Freer<number>, b: Freer<number>): Freer<number> =>
-    impure({ tag: InstructionTags.Mul, a, b, next: pure });
-
-export function mathMapInstr<A, B>(
-    instr: MathInstruction<A>,
-    f: (a: A) => B,
-): MathInstruction<B> {
-    switch (instr.tag) {
-        case InstructionTags.Add:
-        case InstructionTags.Mul:
-            return { ...instr, next: (r: number) => f(instr.next(r)) };
-    }
+function mathOp<F extends MathInstruction>(
+    tag: typeof InstructionTags.Add | typeof InstructionTags.Mul,
+    a: Free<F, number>,
+    b: Free<F, number>,
+): Free<F, number> {
+    return a.flatMap((aVal) =>
+        b.flatMap((bVal) =>
+            Free.liftF({
+                tag,
+                a: aVal,
+                b: bVal,
+                resultType: 0,
+            } as F),
+        ),
+    );
 }
+
+export const add = (a: Free<MathInstruction, number>, b: Free<MathInstruction, number>) => 
+    mathOp(InstructionTags.Add, a, b);
+  
+  export const mul = (a: Free<MathInstruction, number>, b: Free<MathInstruction, number>) => 
+    mathOp(InstructionTags.Mul, a, b);
+
+// export function mathMapInstr<A, B>(
+//     instr: MathInstruction<A>,
+//     f: (a: A) => B,
+// ): MathInstruction<B> {
+//     switch (instr.tag) {
+//         case InstructionTags.Add:
+//         case InstructionTags.Mul:
+//             return { ...instr, next: (r: number) => f(instr.next(r)) };
+//     }
+// }
 
 export const isMathInstruction = makeTagGuard(Object.values(InstructionTags));
 
-showRegistry.registerTypePredicate((value: any) => typeof value === "number", "number");
+showRegistry.registerTypePredicate(
+    (value: any) => typeof value === "number",
+    "number",
+);
+
 showRegistry.register("number", {
-    format: (n: number)  => n.toString()
+    format: (n: number) => n.toString(),
 });
+

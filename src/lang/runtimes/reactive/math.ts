@@ -1,18 +1,18 @@
-import { handleReactive } from "./reactive-helpers";
-import { MathInstruction } from "@/lang/extensions/math";
+import { handleReactiveValues, ReactiveResult } from "./reactive-helpers";
+import { InstructionTags, MathInstruction } from "@/lang/extensions/math";
 
-export function runMathInstr<A>(instr: MathInstruction<A>): A {
-    switch (instr.tag) {
-        case "Add": {
-            return handleReactive([instr.a, instr.b], (a, b) =>
-                instr.next(a + b),
-            );
+export function runMathInstr<R>(
+    effect: MathInstruction & { resultType: R },
+): ReactiveResult<R> {
+    switch (effect.tag) {
+        case InstructionTags.Add: {
+            const { a, b } = effect;
+            return handleReactiveValues([a, b], (aVal, bVal) => aVal + bVal);
         }
-        case "Mul": {
-            return handleReactive([instr.a, instr.b], (a, b) =>
-                instr.next(a * b),
-            );
+
+        case InstructionTags.Mul: {
+            const { a, b } = effect;
+            return handleReactiveValues([a, b], (aVal, bVal) => aVal * bVal);
         }
     }
 }
-

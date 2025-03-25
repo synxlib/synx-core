@@ -4,10 +4,9 @@ import {
   setProperty,
 } from "@/lang/extensions/dom";
 import { constantOn, foldM, on } from "@/lang/extensions/event";
-import { sequence } from "@/lang/extensions/helpers";
 import { allE, mapE } from "@/lang/extensions/error";
-import { pure } from "@/lang/extensions/freer";
 import { concat, join } from "@/lang/extensions/list";
+import { Free, sequence } from "@/generic/free";
 
 export const simpleTodoApp = () => {
   // === Example Program: simpleTodoApp ===
@@ -18,22 +17,22 @@ export const simpleTodoApp = () => {
   return mapE(
     allE([inputEither, buttonEither, listElEither]),
     ([input, button, listEl]) => {
-      const clickEvent = on("click", pure(button));
+      const clickEvent = on("click", Free.pure(button));
 
-      const todoList = foldM(clickEvent, pure([] as string[]), (todos) => {
-        const value = getProperty("value", pure(input));
-        return concat(pure(todos), value);
+      const todoList = foldM(clickEvent, Free.pure([] as string[]), (todos) => {
+        const value = getProperty("value", Free.pure(input));
+        return concat(Free.pure(todos), value);
       });
 
-      const todoListStr = join(todoList, pure(", "));
+      const todoListStr = join(todoList, Free.pure(", "));
 
-      const inputValueOnSubmit = constantOn(clickEvent, pure(""));
+      const inputValueOnSubmit = constantOn(clickEvent, Free.pure(""));
 
-      return sequence(
-        setProperty("textContent", todoListStr, pure(listEl)),
-        setProperty("value", inputValueOnSubmit, pure(input))
-      );
-    }
+      return sequence([
+        setProperty("textContent", todoListStr, Free.pure(listEl)),
+        setProperty("value", inputValueOnSubmit, Free.pure(input)),
+      ]);
+    },
   );
 };
 

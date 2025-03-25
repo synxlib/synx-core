@@ -1,28 +1,36 @@
-import { Either, left } from "@/generic/either";
 import { ErrorInstruction, throwError } from "@/lang/extensions/error";
+import { ReactiveResult } from "./reactive-helpers";
 import { run } from "./run";
-import { pure } from "@/lang/extensions/freer";
+import { Free } from "@/generic/free";
+import { Instruction } from "@/lang/extensions/instruction";
 
-export function runErrorInstr<A>(instr: ErrorInstruction<A>): A {
+export function runErrorInstr<R>(
+    instr: ErrorInstruction & { resultType: R },
+): ReactiveResult<R> {
     switch (instr.tag) {
         case "Throw": {
-            const error = run(instr.error);
+            const error = instr.error;
             throw new Error(error);
         }
-    
+
         case "Catch": {
             try {
                 const result = run(instr.tryBlock);
                 return result;
-              } catch (err) {
-                return run(instr.handler(String(err)));
-              }
+            } catch (err) {
+                const handlerProgram = instr.handler(String(err));
+                return run(handlerProgram);
+            }
         }
-    
+
         case "Require": {
-          return instr.input.isLeft()
-            ? run(throwError(instr.input.value || instr.error))
-            : run(pure(instr.next(instr.input.value)));
+            if (instr.input.isLeft()) {
+                const errorMsg = instr.input.value || instr.error;
+                throw new Error(errorMsg);
+            } else {
+                // Run the pure value through the interpreter to maintain reactivity
+                return run(Free.pure<Instruction, R>(instr.input.value));
+            }
         }
     }
 }

@@ -1,37 +1,38 @@
-import { DomInstruction } from "@/lang/extensions/dom";
-import { Freer } from "@/lang/extensions/freer";
-import { run } from "./run";
-import { handleReactive, withReactive } from "./reactive-helpers";
+import { DomInstruction, InstructionTags } from "@/lang/extensions/dom";
+import { handleReactiveValues, ReactiveResult } from "./reactive-helpers";
+import { right, Either, left } from "@/generic/either";
 
-export function runDomInstr<A>(instr: DomInstruction<Freer<A>>): A {
+export function runDomInstr<X>(
+    instr: DomInstruction & { resultType: X },
+): ReactiveResult<X> {
     switch (instr.tag) {
-        case "GetElementById": {
-            const id = run(instr.id);
-            const el = document.getElementById(id);
-            return run(instr.next(el));
+        case InstructionTags.GetElementById: {
+            return handleReactiveValues([instr.id], (id) => {
+                const element = document.getElementById(id);
+                // Create the Either result
+                const result = element
+                    ? (right(element) as Either<string, HTMLElement>)
+                    : (left(`Element with id ${id} not found`) as Either<
+                          string,
+                          HTMLElement
+                      >);
+                return result as typeof instr.resultType;
+            });
         }
         case "GetProperty": {
-            const prop = run(instr.prop);
-            const target = run(instr.target);
-            const value = target[prop];
-            return run(instr.next(value));
+            return handleReactiveValues(
+                [instr.prop, instr.target],
+                (prop, target) => target[prop],
+            );
         }
         case "SetProperty": {
-            const prop = run(instr.prop);
-            const target = run(instr.target);
-            // const value = instr.value;
-            return handleReactive([instr.value], (value) => {
-                if (target) target[prop] = value;
-                return instr.next();
-            })
-            // return run(
-            //   flatMap(value, (v: any) => {
-            //     withReactive(v, (val: any) => {
-            //       if (target) target[prop] = val;
-            //     });
-            //     return instr.next();
-            //   })
-            // );
+            return handleReactiveValues(
+                [instr.prop, instr.target, instr.value],
+                (prop, target, value) => {
+                    if (target) target[prop] = value;
+                    return undefined as typeof instr.resultType;
+                },
+            );
         }
     }
 }

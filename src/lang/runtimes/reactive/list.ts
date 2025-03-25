@@ -1,21 +1,28 @@
 import { ListInstruction } from "@/lang/extensions/list";
-import { handleReactive, isSignal, withReactive } from "./reactive-helpers";
+import { handleReactiveValues, ReactiveResult } from "./reactive-helpers";
 
-export function runListInstruction<A>(instr: ListInstruction<A>): A {
+export function runListInstruction<R>(
+    instr: ListInstruction & { resultType: R },
+): ReactiveResult<R> {
     switch (instr.tag) {
         case "Concat": {
-            return handleReactive([instr.value, instr.list], (value, list) => {
-                console.log("Concat", list, value);
-                return instr.next([...list, value]);
-            });
+            return handleReactiveValues(
+                [instr.value, instr.list],
+                (value, list) => {
+                    console.log("Concat", list, value);
+                    return [...list, value];
+                },
+            );
         }
         case "Join": {
             console.log("Join before:", instr.list);
-            return handleReactive([instr.str, instr.list], (str, list) => {
-                console.log("Join", list, str);
-                return instr.next(list.join(str));
-            });
+            return handleReactiveValues(
+                [instr.str, instr.list],
+                (str, list) => {
+                    console.log("Join", list, str);
+                    return list.join(str);
+                },
+            );
         }
     }
 }
-

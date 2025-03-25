@@ -1,17 +1,23 @@
 import { pure } from "@/lang/extensions/freer";
-import { handleReactive } from "./reactive-helpers";
+import { handleReactiveValues, ReactiveResult } from "./reactive-helpers";
 import { ShowInstruction, showRegistry } from "@/lang/extensions/show";
 
-export function runShowInstr<A>(instr: ShowInstruction<A>): A {
+export function runShowInstr<R>(
+    instr: ShowInstruction & { resultType: R },
+): ReactiveResult<R> {
     switch (instr.tag) {
         case "Show": {
-            return handleReactive([instr.value], (value) => {
-                const typeId = instr.getTypeId(value);
+            return handleReactiveValues([instr.value], (value) => {
+                const typeId = showRegistry.detectType(value);
                 const formatted = showRegistry.format(typeId, value);
-                return instr.next(formatted);
+                console.log(
+                    "Interpreter show value callback",
+                    value,
+                    formatted,
+                    typeId,
+                );
+                return formatted as typeof instr.resultType;
             });
         }
     }
 }
-
-
