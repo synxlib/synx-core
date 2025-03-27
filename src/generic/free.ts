@@ -1,44 +1,54 @@
+type FreeOperation<F, A> =
+    | { type: "Pure"; value: A }
+    | {
+          type: "Impure";
+          effect: F & { resultType: any };
+          next: (x: any) => Free<F, A>;
+      };
+
 export class Free<F, A> {
-    constructor(
-        private readonly runFree: <R>(
-            onPure: (a: A) => R,
-            onImpure: <X>(
-                effect: F & { resultType: X },
-                k: (x: X) => Free<F, A>,
-            ) => R,
-        ) => R,
-    ) {}
+    private constructor(private readonly operation: FreeOperation<F, A>) {}
 
     static pure<F, A>(a: A): Free<F, A> {
-        return new Free((onPure, _) => onPure(a));
+        return new Free({ type: "Pure", value: a });
     }
 
     static liftF<F, A>(effect: F & { resultType: A }): Free<F, A> {
-        return new Free((onPure, onImpure) =>
-            onImpure(effect, (x) => Free.pure(x)),
-        );
+        return new Free({
+            type: "Impure",
+            effect,
+            next: (x) => Free.pure(x),
+        });
     }
 
     flatMap<B>(f: (a: A) => Free<F, B>): Free<F, B> {
-        return new Free((onPure, onImpure) =>
-            this.runFree(
-                // Pure case: apply f and continue
-                (a) => f(a).runFree(onPure, onImpure),
-
-                // Impure case: handle the effect then continue
-                (effect, k) => onImpure(effect, (x) => k(x).flatMap(f)),
-            ),
-        );
+        if (this.operation.type === "Pure") {
+            return f(this.operation.value);
+        } else {
+            return new Free({
+                type: "Impure",
+                effect: this.operation.effect,
+                next: (x) => this.operation.next(x).flatMap(f),
+            });
+        }
     }
 
     run(interpret: <X>(effect: F & { resultType: X }) => X): A {
-        return this.runFree(
-            // Pure case: return the value
-            (a) => a,
+        let current: Free<F, A> = this;
+        let result: A | undefined = undefined;
 
-            // Impure case: interpret the effect and continue
-            (effect, k) => k(interpret(effect)).run(interpret),
-        );
+        while (true) {
+            if (current.operation.type === "Pure") {
+                result = current.operation.value;
+                break;
+            } else {
+                const effect = current.operation.effect;
+                const effectResult = interpret(effect);
+                current = current.operation.next(effectResult);
+            }
+        }
+
+        return result!;
     }
 }
 

@@ -50,7 +50,7 @@ export function runEventInstr<R>(
                 [instr.event, instr.initial],
                 (event, initial) => {
                     let current = initial;
-                    const signal = { get: () => current };
+                    const signal = { get: () => current, _dependencies: [] };
                     event.subscribe((e: unknown) => {
                         current = run(instr.reducer(current, e));
                         notify(signal);

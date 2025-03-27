@@ -9,7 +9,8 @@
     "build": "tsup src/index.ts --format esm,cjs --dts",
     "dev": "tsup --watch",
     "lint": "eslint src --fix",
-    "format": "prettier --write src"
+    "format": "prettier --write src",
+    "bench": "node --expose-gc -r tsx/cjs benchmarks/benchmark-runner.ts"
   },
   "keywords": [],
   "author": "Debjit Biswas",

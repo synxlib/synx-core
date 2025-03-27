@@ -21,7 +21,6 @@ import { runShowInstr } from "./show";
 import { Free } from "@/generic/free";
 
 export function run<A>(program: Free<Instruction, A>): A {
-    console.log("program", program);
     // Create an interpreter that delegates based on instruction type
     const interpret = <X>(
         effect: Instruction & { resultType: X },
