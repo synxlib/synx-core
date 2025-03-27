@@ -94,7 +94,11 @@ export function handleReactiveValues<T>(
         // Register with all source signals in the dependency chain
         const registerWithSignals = (value: any, dep, index) => {
             console.log("Register with signal");
-            if (isSignal(dep) && dep._dependencies.length === 0) {
+            if (
+                isSignal(dep) &&
+                dep._dependencies &&
+                dep._dependencies.length === 0
+            ) {
                 console.log("Value is signal");
                 if (!signalStore.has(dep)) signalStore.set(dep, new Set());
                 const update = () => {
