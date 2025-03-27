@@ -74,35 +74,52 @@ export function handleReactiveValues<T>(
     values: any[],
     compute: (...args: any[]) => T,
 ) {
+    console.log("Values,", values);
+    if (values[1] && values[1].get) {
+        console.log("Special case values[1]", values[0], values[1].get());
+    }
     // Check if either value depends on a signal (directly or indirectly)
     if (values.some(hasSignalDependency)) {
+        console.log("Values have dependencies");
         const resolved = values.map((v: any) => (isSignal(v) ? v.get() : v));
+
+        console.log("Initially resolved values,", resolved);
 
         // Create a result with dependencies tracked
         const result = {
-            get: compute,
+            get: () => compute(...resolved),
             _dependencies: values, // Track dependencies for future operations
         };
 
         // Register with all source signals in the dependency chain
-        const registerWithSignals = (value: any, index) => {
-            if (isSignal(value)) {
-                if (!signalStore.has(value)) signalStore.set(value, new Set());
+        const registerWithSignals = (value: any, dep, index) => {
+            console.log("Register with signal");
+            if (isSignal(dep) && dep._dependencies.length === 0) {
+                console.log("Value is signal");
+                if (!signalStore.has(dep)) signalStore.set(dep, new Set());
                 const update = () => {
                     resolved[index] = value.get();
                     compute(...resolved);
                 };
-                signalStore.get(value)!.add(update);
+                signalStore.get(dep)!.add(update);
                 update();
-            } else if (typeof value === "object" && value !== null) {
-                if (Array.isArray(value._dependencies)) {
-                    value._dependencies.forEach(registerWithSignals);
+            } else if (typeof dep === "object" && dep !== null) {
+                console.log(
+                    "Not a signal, but trying to register callback for signal higher up.",
+                    dep,
+                );
+                if (Array.isArray(dep._dependencies)) {
+                    dep._dependencies.forEach((dep) =>
+                        registerWithSignals(value, dep, index),
+                    );
                 }
             }
         };
 
         // Register with all signals in the dependency tree
-        values.forEach(registerWithSignals);
+        values.forEach((value, index) =>
+            registerWithSignals(value, value, index),
+        );
 
         return result;
     }

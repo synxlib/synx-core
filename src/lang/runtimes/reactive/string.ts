@@ -6,8 +6,9 @@ export function runStringInstr<R>(
 ): ReactiveResult<R> {
     switch (instr.tag) {
         case "Combine": {
+            console.log("Configuring Combine reactivity.");
             return handleReactiveValues([instr.a, instr.b], (a, b) => {
-                console.log("Combine callback", a, b);
+                console.log("Combine callback", a, b, `"${a + b}"`);
                 return a + b;
             });
         }

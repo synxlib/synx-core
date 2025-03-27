@@ -7,6 +7,8 @@ export function runShowInstr<R>(
 ): ReactiveResult<R> {
     switch (instr.tag) {
         case "Show": {
+            console.log("Configuring show");
+            console.log("Show value", instr.value.get());
             return handleReactiveValues([instr.value], (value) => {
                 const typeId = showRegistry.detectType(value);
                 const formatted = showRegistry.format(typeId, value);

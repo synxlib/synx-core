@@ -29,6 +29,7 @@ export function runDomInstr<X>(
             return handleReactiveValues(
                 [instr.prop, instr.target, instr.value],
                 (prop, target, value) => {
+                    console.log("Set Property Callback", target, value);
                     if (target) target[prop] = value;
                     return undefined as typeof instr.resultType;
                 },

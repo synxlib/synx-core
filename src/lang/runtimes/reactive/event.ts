@@ -28,13 +28,19 @@ export function runEventInstr<R>(
                 [instr.event, instr.initial],
                 (event, initial) => {
                     let current = initial;
-                    const signal = { get: () => current };
+                    console.log("Fold initial value", initial);
+                    const signal = { get: () => current, _dependencies: [] };
                     event.subscribe((e: unknown) => {
                         console.log("Running fold subscribe", current);
                         current = instr.reducer(current, e);
                         console.log("New current", current);
                         notify(signal);
                     });
+                    console.log(
+                        "Returning signal from fold",
+                        signal,
+                        signal.get(),
+                    );
                     return signal as typeof instr.resultType;
                 },
             );
