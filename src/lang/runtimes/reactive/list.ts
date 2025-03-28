@@ -8,9 +8,9 @@ export function runListInstruction<R>(
         case "Concat": {
             return handleReactiveValues(
                 [instr.value, instr.list],
-                (value, list) => {
+                <T>(value: T, list: T[]) => {
                     console.log("Concat", list, value);
-                    return [...list, value];
+                    return [...list, value] as typeof instr.resultType;
                 },
             );
         }
