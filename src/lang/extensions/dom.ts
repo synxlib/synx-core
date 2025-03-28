@@ -6,6 +6,7 @@ import { Instruction } from "./instruction";
 export const InstructionTags = {
     GetElementById: "GetElementById",
     QuerySelectorAll: "QuerySelectorAll",
+    QuerySelector: "QuerySelector",
     GetProperty: "GetProperty",
     SetProperty: "SetProperty",
     SetChildren: "SetChildren",
@@ -33,6 +34,11 @@ export type DomInstruction =
           tag: typeof InstructionTags.QuerySelectorAll;
           selector: string;
           resultType: Element[];
+      }
+    | {
+          tag: typeof InstructionTags.QuerySelector;
+          selector: string;
+          resultType: Either<string, Element>;
       }
     | {
           tag: typeof InstructionTags.GetProperty;

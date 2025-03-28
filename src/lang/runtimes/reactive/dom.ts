@@ -29,6 +29,22 @@ export function runDomInstr<X>(
                 },
             );
         }
+        case InstructionTags.QuerySelector: {
+            return handleReactiveValues(
+                [instr.selector],
+                (selector: string) => {
+                    const element = document.querySelector(selector);
+
+                    const result = element
+                        ? (right(element) as Either<string, Element>)
+                        : (left(
+                              `Element with selector ${selector} not found`,
+                          ) as Either<string, Element>);
+
+                    return result as typeof instr.resultType;
+                },
+            );
+        }
         case "GetProperty": {
             return handleReactiveValues(
                 [instr.prop, instr.target],
