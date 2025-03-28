@@ -1,8 +1,8 @@
 import { Free, sequence } from "@/generic/free";
 import { Instruction } from "@/lang/extensions/instruction";
 import { run } from "@/lang/runtimes/reactive/run";
-import { performance } from "perf_hooks";
 import { benchmark } from "./benchmark";
+import { log } from "@/lang/extensions/debug";
 
 function runBenchmarks(
     name: string,
@@ -21,7 +21,7 @@ function runBenchmarks(
     for (const { depth, iterations } of depths) {
         const label = `${name} (${depth})`;
         try {
-            benchmark(label, () => deepBindTest(depth), iterations);
+            benchmark(label, () => fn(depth), iterations);
         } catch (e) {
             console.error(`❌ Failed at depth ${depth}: ${e.message || e}`);
         }
@@ -60,44 +60,47 @@ function wideTreeTest(width: number, depth: number) {
 }
 
 function runWideTreeBenchmarks() {
-    runBenchmarks("Wide Tree", (depth: number) => {
-        wideTreeTest(depth, depth);
-    });
+    runBenchmarks(
+        "Wide Tree",
+        (depth: number) => {
+            wideTreeTest(10, depth);
+        },
+        [
+            { depth: 100, iterations: 50 },
+            { depth: 1000, iterations: 20 },
+            { depth: 5000, iterations: 10 },
+        ],
+    );
 }
-// If you want to add more realistic benchmarks, you can add them here
-function runRealisticBenchmarks() {
-    // Add your own tests that better reflect your actual usage patterns
-    // For example:
-    /*
-  function realisticWorkflow() {
-    // Create a real workflow using your Free monad
-    // This should mimic how you actually use it in your application
-    const program = ... your actual usage pattern ...
-    return run(program);
-  }
 
-  benchmark("Realistic Workflow", realisticWorkflow, 20);
-  */
+function manyLogTest(count: number) {
+    // Create a sequence of many simple log instructions
+    const effects = Array(count)
+        .fill(0)
+        .map((_, i) => log(`Log message ${i}`));
+
+    return run(sequence(effects));
+}
+
+function runManyLogTest() {
+    runBenchmarks(
+        "Many Logs",
+        (depth: number) => {
+            return manyLogTest(depth);
+        },
+        [
+            { depth: 100, iterations: 50 },
+            { depth: 1000, iterations: 20 },
+            { depth: 5000, iterations: 10 },
+        ],
+    );
 }
 
 // Run all benchmarks
 function runAllBenchmarks() {
     runDeepBindBenchmarks();
     runWideTreeBenchmarks();
-    // runRealisticBenchmarks();
+    // runManyLogTest();
 }
-
-// Only run if directly executed
-// if (require.main === module) {
-//   runAllBenchmarks();
-// }
-
-// Export for modular usage
-export {
-    deepBindTest,
-    runDeepBindBenchmarks,
-    // runRealisticBenchmarks,
-    runAllBenchmarks,
-};
 
 runAllBenchmarks();

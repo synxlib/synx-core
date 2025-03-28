@@ -1,14 +1,13 @@
 import { DebugInstruction } from "@/lang/extensions/debug";
-import { Freer } from "@/lang/extensions/freer";
-import { run } from "./run";
-import { Either } from "@/generic/either";
+import { ReactiveResult } from "./reactive-helpers";
 
-
-export function runDebugInstr<A>(instr: DebugInstruction<Freer<A>>): A {
-    switch(instr.tag) {
+export function runDebugInstr<R>(
+    instr: DebugInstruction & { resultType: R },
+): ReactiveResult<R> {
+    switch (instr.tag) {
         case "Log": {
             console.log(instr.message);
-            return run(instr.next());
-          }
+            return undefined as typeof instr.resultType;
+        }
     }
 }
