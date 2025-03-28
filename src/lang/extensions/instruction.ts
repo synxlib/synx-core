@@ -3,6 +3,7 @@ import { DomInstruction } from "./dom";
 import { ErrorInstruction } from "./error";
 import { EventInstruction } from "./event";
 import { ListInstruction } from "./list";
+import { LogicalInstruction } from "./logical";
 import { MathInstruction } from "./math";
 import { ShowInstruction } from "./show";
 import { StateInstr } from "./state";
@@ -16,4 +17,5 @@ export type Instruction =
     | ListInstruction
     | MathInstruction
     | StringInstruction
+    | LogicalInstruction
     | ShowInstruction;

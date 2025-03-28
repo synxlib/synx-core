@@ -89,6 +89,23 @@ export const querySelectorAll = (
               }),
           );
 
+export const querySelector = (
+    selector: string | Free<Instruction, string>,
+): Free<Instruction, Either<string, Element>> =>
+    typeof selector === "string"
+        ? Free.liftF({
+              tag: InstructionTags.QuerySelector,
+              selector,
+              resultType: left("") as Either<string, Element>,
+          })
+        : selector.flatMap((selectorVal) =>
+              Free.liftF({
+                  tag: InstructionTags.QuerySelector,
+                  selector: selectorVal,
+                  resultType: left("") as Either<string, Element>,
+              }),
+          );
+
 export const getProperty = (
     prop: string | Free<Instruction, string>,
     target: Free<Instruction, HTMLElement>,

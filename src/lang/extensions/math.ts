@@ -38,22 +38,15 @@ function mathOp<F extends MathInstruction>(
     );
 }
 
-export const add = (a: Free<MathInstruction, number>, b: Free<MathInstruction, number>) => 
-    mathOp(InstructionTags.Add, a, b);
-  
-  export const mul = (a: Free<MathInstruction, number>, b: Free<MathInstruction, number>) => 
-    mathOp(InstructionTags.Mul, a, b);
+export const add = (
+    a: Free<MathInstruction, number>,
+    b: Free<MathInstruction, number>,
+) => mathOp(InstructionTags.Add, a, b);
 
-// export function mathMapInstr<A, B>(
-//     instr: MathInstruction<A>,
-//     f: (a: A) => B,
-// ): MathInstruction<B> {
-//     switch (instr.tag) {
-//         case InstructionTags.Add:
-//         case InstructionTags.Mul:
-//             return { ...instr, next: (r: number) => f(instr.next(r)) };
-//     }
-// }
+export const mul = (
+    a: Free<MathInstruction, number>,
+    b: Free<MathInstruction, number>,
+) => mathOp(InstructionTags.Mul, a, b);
 
 export const isMathInstruction = makeTagGuard(Object.values(InstructionTags));
 
@@ -65,4 +58,3 @@ showRegistry.registerTypePredicate(
 showRegistry.register("number", {
     format: (n: number) => n.toString(),
 });
-

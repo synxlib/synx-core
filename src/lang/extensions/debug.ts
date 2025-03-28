@@ -29,14 +29,4 @@ export const log = (
               }),
           );
 
-// export function debugMapInstr<A, B>(
-//     instr: DebugInstruction,
-//     f: (a: A) => B,
-// ): DebugInstruction {
-//     switch (instr.tag) {
-//         case InstructionTags.Log:
-//             return { ...instr, next: () => f(instr.next()) };
-//     }
-// }
-
 export const isDebugInstruction = makeTagGuard(Object.values(InstructionTags));
